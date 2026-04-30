@@ -400,7 +400,7 @@ exports('CreateWorkgroup', function(source)
 
 		local name = { First = char:GetData("First"), Last = char:GetData("Last") }
 
-		if exports.ox_inventory:ItemsHas(char:GetData("SID"), 1, 'vpn', 1) then
+		if exports.ox_inventory:ItemsHas(char:GetData("SID"), 'vpn', 1) then
 		    local vpn = exports.ox_inventory:ItemsGetFirst(char:GetData("SID"), "vpn", 1)
 		    local vpnName = vpn.MetaData.VpnName
 		    if type(vpnName) == "string" then
@@ -423,6 +423,10 @@ exports('CreateWorkgroup', function(source)
 				Last = name.Last,
 			},
 			Members = {},
+			Activity = nil,
+			Locked = false,
+			Inviting = false,
+			PartyUuid = nil,
 		})
 
 		return true
@@ -493,7 +497,7 @@ exports('JoinWorkgroup', function(creator, source)
 
 					local name = { First = char:GetData("First"), Last = char:GetData("Last") }
 							
-					if exports.ox_inventory:ItemsHas(char:GetData("SID"), 1, 'vpn', 1) then
+					if exports.ox_inventory:ItemsHas(char:GetData("SID"), 'vpn', 1) then
 					    local vpn = exports.ox_inventory:ItemsGetFirst(char:GetData("SID"), "vpn", 1)
 					    local vpnName = vpn.MetaData.VpnName
 					    if type(vpnName) == "string" then
@@ -569,7 +573,7 @@ exports('RequestWorkgroup', function(group, source)
 
 						local name = { First = char:GetData("First"), Last = char:GetData("Last") }
 
-						if exports.ox_inventory:ItemsHas(char:GetData("SID"), 1, 'vpn', 1) then
+						if exports.ox_inventory:ItemsHas(char:GetData("SID"), 'vpn', 1) then
 						    local vpn = exports.ox_inventory:ItemsGetFirst(char:GetData("SID"), "vpn", 1)
 						    local vpnName = vpn.MetaData.VpnName
 						    if type(vpnName) == "string" then
@@ -808,6 +812,116 @@ exports('JailReleased', function(source)
 			exports['pulsar-labor']:OffDuty(k, source, false, true)
 		end
 	end
+end)
+
+-- Group management exports for activity, locking, inviting, and parties
+exports('SetGroupActivity', function(creatorId, activity)
+	for k, v in ipairs(_Groups) do
+		if v.Creator.ID == creatorId then
+			_Groups[k].Activity = activity
+			return true
+		end
+	end
+	return false
+end)
+
+exports('GetGroupActivity', function(creatorId)
+	for k, v in ipairs(_Groups) do
+		if v.Creator.ID == creatorId then
+			return v.Activity
+		end
+	end
+	return nil
+end)
+
+exports('ClearGroupActivity', function(creatorId)
+	for k, v in ipairs(_Groups) do
+		if v.Creator.ID == creatorId then
+			_Groups[k].Activity = nil
+			return true
+		end
+	end
+	return false
+end)
+
+exports('SetGroupLocked', function(creatorId, locked)
+	for k, v in ipairs(_Groups) do
+		if v.Creator.ID == creatorId then
+			_Groups[k].Locked = locked
+			return true
+		end
+	end
+	return false
+end)
+
+exports('IsGroupLocked', function(creatorId)
+	for k, v in ipairs(_Groups) do
+		if v.Creator.ID == creatorId then
+			return v.Locked
+		end
+	end
+	return false
+end)
+
+exports('ToggleGroupInviting', function(creatorId)
+	for k, v in ipairs(_Groups) do
+		if v.Creator.ID == creatorId then
+			_Groups[k].Inviting = not _Groups[k].Inviting
+			return _Groups[k].Inviting
+		end
+	end
+	return false
+end)
+
+exports('IsGroupInviting', function(creatorId)
+	for k, v in ipairs(_Groups) do
+		if v.Creator.ID == creatorId then
+			return v.Inviting
+		end
+	end
+	return false
+end)
+
+exports('CreateGroupUniqueueParty', function(creatorId, partyType)
+	for k, v in ipairs(_Groups) do
+		if v.Creator.ID == creatorId then
+			if not _Groups[k].PartyUuid then
+				local party = CreateUniqueueParty(partyType)
+				_Groups[k].PartyUuid = party.getUUID()
+
+				local identifiers = {}
+				identifiers[_Groups[k].Creator.SID] = _Groups[k].Creator.SID
+				for _, member in ipairs(_Groups[k].Members) do
+					identifiers[member.SID] = member.SID
+					party.addMember(member.SID)
+				end
+				party.addMember(_Groups[k].Creator.SID)
+
+				return _Groups[k].PartyUuid
+			end
+			return _Groups[k].PartyUuid
+		end
+	end
+	return nil
+end)
+
+exports('GetGroupPartyUuid', function(creatorId)
+	for k, v in ipairs(_Groups) do
+		if v.Creator.ID == creatorId then
+			return v.PartyUuid
+		end
+	end
+	return nil
+end)
+
+exports('ClearGroupPartyUuid', function(creatorId)
+	for k, v in ipairs(_Groups) do
+		if v.Creator.ID == creatorId then
+			_Groups[k].PartyUuid = nil
+			return true
+		end
+	end
+	return false
 end)
 
 exports('GetOffers', function()
